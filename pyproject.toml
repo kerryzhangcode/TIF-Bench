@@ -1,0 +1,33 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "tifbench"
+version = "0.1.0"
+description = "Historical Polymarket binary forecasting benchmark"
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.11"
+dependencies = [
+  "pydantic>=2.7",
+  "pyyaml>=6.0",
+  "python-dotenv>=1.0",
+  "openai>=1.60",
+  "httpx>=0.27",
+  "google-news-api==0.0.23",
+  "trafilatura>=1.12",
+]
+
+[project.optional-dependencies]
+browser = ["playwright>=1.40"]
+
+[project.scripts]
+tifbench = "tifbench.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["tifbench*"]
+
+[tool.setuptools.package-data]
+tifbench = ["benchmark/schema.json"]
