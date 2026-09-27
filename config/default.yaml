@@ -1,0 +1,168 @@
+experiment:
+  dataset: historical
+  # Hours before Gamma market.closedTime: 21d / 14d / 7d / 3d.
+  horizon_hours: [504, 336, 168, 72]
+  primary_metric: brier
+  # Formal comparison only (run-formal). Upstream curation/news stay on gpt_sol medium.
+  # Small OpenRouter baselines: kev / gemma / qwen.
+  models: [jev, kev, gpt_astra, claude_opus_5_5, gemma_3_12b, qwen3_5_9b]
+  # batch = cheap async where available (OpenAI Batch / OpenRouter Batch);
+  # live = bounded concurrent (jev/kev Decisions; Gemma and Qwen).
+  forecast_mode: batch
+  live_max_concurrent: 4
+  # Batch size for model requests.
+  batch_chunk_size: 500
+  batch_poll_interval_sec: 30
+  # Forecast USD accounting (run-formal only). OpenRouter prefers response usage.cost;
+  # OpenAI Astra: standard list rates (USD / 1M tokens); batch applies batch_multiplier.
+  # Source: https://developers.openai.com/api/docs/pricing (gpt-6-astra short context).
+  forecast_pricing:
+    gpt_astra:
+      input_per_mtok: 10.0
+      output_per_mtok: 50.0
+      cached_input_per_mtok: 1.0
+      batch_multiplier: 0.5
+
+models:
+  jev:
+    provider: openrouter
+    # OpenRouter Decisions: POST {base_url}/alpha/decisions
+    base_url: https://openrouter.ai/api
+    # Request this alias; do not pin a resolved snapshot here.
+    model: typesafe/jev-1.13
+    api_key_env: OPENROUTER_API_KEY
+    question_type: noul
+  kev:
+    provider: openrouter
+    # Same Decisions contract as Jev (live only).
+    base_url: https://openrouter.ai/api
+    model: jaredpalmer/kev-4b
+    api_key_env: OPENROUTER_API_KEY
+    question_type: noul
+  # Stage-2 curation model (not in experiment.models).
+  gpt_sol:
+    provider: openai
+    api_key_env: OPENAI_API_KEY
+    model: gpt-6-sol
+    reasoning:
+      effort: medium
+    api: responses
+  gpt_astra:
+    provider: openai
+    api_key_env: OPENAI_API_KEY
+    model: gpt-6-astra
+    reasoning:
+      effort: high
+    api: responses
+  claude_opus_5_5:
+    provider: openrouter_chat
+    base_url: https://openrouter.ai/api/v1
+    model: anthropic/claude-opus-5.5
+    api_key_env: OPENROUTER_API_KEY
+    reasoning:
+      effort: high
+    transport: openrouter_batch
+  gemma_3_12b:
+    provider: openrouter_chat
+    base_url: https://openrouter.ai/api/v1
+    model: google/gemma-3-12b-it
+    api_key_env: OPENROUTER_API_KEY
+    # No OpenRouter :batch variant for Gemma 3 12B.
+    transport: openrouter_live
+    # Prefer json_object: stricter json_schema is flaky on some small-model providers.
+    response_format: json_object
+  qwen3_5_9b:
+    provider: openrouter_chat
+    base_url: https://openrouter.ai/api/v1
+    model: qwen/qwen3.5-9b
+    api_key_env: OPENROUTER_API_KEY
+    # OpenRouter reports no :batch endpoint for this model.
+    transport: openrouter_live
+    response_format: json_object
+
+polymarket:
+  gamma_base_url: https://gamma-api.polymarket.com
+  clob_base_url: https://clob.polymarket.com
+  # Bound on CLOB lag at each cutoff (validate against observed cadence).
+  max_price_lag_hours: 6
+  # Formal construction fetches a short CLOB window around each cutoff
+  # (selection still uses only points with t_obs <= cutoff).
+  price_fetch_lookahead_hours: 1
+  price_fidelity: 60
+
+formal_news:
+  model: gpt-6-sol
+  api_key_env: OPENAI_API_KEY
+  reasoning_effort: medium
+  # Evidence window left edge is market_close − window_days (shared across horizons).
+  # Right edge is per-horizon forecast cutoff = market_close − horizon_hours.
+  window_days: 60
+  # Formal RSS retrieval partitions [evidence_start, cutoff] into ~rss_slice_days
+  # slices (shared seam instants). Do not collapse into one full-window Google News
+  # query (that would reshuffle ranking and drop recent articles).
+  rss_slice_days: 30
+  max_rss_candidates: 90
+  min_body_chars: 400
+  max_body_chars: 12000
+  # Soft max in SUMMARY_PROMPT ("at most N words"); hard reject above hard cap.
+  max_summary_words: 1000
+  max_summary_words_hard: 1200
+  min_articles: 3
+  # Orchestration only (does not change keep rules / prompts).
+  # Construction phases: queries→retrieve→relevance/summary waves→assemble.
+  # batch = OpenAI Batch API; live = bounded concurrent responses.create.
+  gpt_mode: batch
+  # retrieve only (does not affect relevance/summary Batch parallelism).
+  retrieve_max_workers: 1
+  # Parallel publisher HTML fetches within a horizon (decode stays process-locked).
+  retrieve_article_max_workers: 8
+  # Pace publisher URL resolution to respect Google News rate limits.
+  google_decode_get_min_interval_sec: 1.5
+  google_decode_get_concurrency: 2
+  # batchexecute POST packs many Fbv4je RPCs; pace between POST chunks only.
+  google_decode_post_min_interval_sec: 2.0
+  google_decode_batch_size: 25
+  google_decode_requests_per_minute: 30
+  google_decode_max_retries: 5
+  live_max_concurrent: 4
+  batch_chunk_size: 200
+  batch_poll_interval_sec: 30
+
+# Stage-2 target: exactly per_month_n markets per sample month (soft domain mix).
+sample_benchmark:
+  window_start_utc: "2025-10-01T00:00:00Z"
+  window_end_utc_exclusive: "2026-10-01T00:00:00Z"
+  months:
+    - "2025-10"
+    - "2025-11"
+    - "2025-12"
+    - "2026-01"
+    - "2026-02"
+    - "2026-03"
+    - "2026-04"
+    - "2026-05"
+    - "2026-06"
+    - "2026-07"
+    - "2026-08"
+    - "2026-09"
+  domains:
+    - "Politics"
+    - "Geopolitics"
+    - "Economics / Finance"
+    - "Business"
+    - "Technology / Science"
+    - "Culture / Entertainment"
+  per_month_n: 35
+  # Stage-1 hash sample before CLOB (also bounds Stage-2 pre-screen); tags are hints.
+  prescreen_candidates_per_tag_month: 100
+  # Stage 2: pre-screen batch size only (month-select offers the full INCLUDE pool).
+  max_candidates_per_month_prompt: 40
+  # Raised so large INCLUDE months (e.g. Sep ~73) fit one month-select call.
+  max_bucket_prompt_chars: 160000
+
+paths:
+  raw: data/raw
+  curated: data/curated
+  derived: data/derived
+  # Publishable formal cohort consumed by run-formal (not instances.json).
+  benchmark: data/benchmark

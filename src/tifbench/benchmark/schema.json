@@ -1,0 +1,211 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "News-Grounded Prediction Market Forecasting Benchmark Instance",
+  "type": "object",
+  "required": [
+    "instance_id",
+    "market",
+    "forecast",
+    "polymarket",
+    "outcome",
+    "evidence"
+  ],
+  "properties": {
+    "instance_id": {
+      "type": "string",
+      "description": "Unique identifier for one market × forecast-horizon instance."
+    },
+
+    "market": {
+      "type": "object",
+      "required": [
+        "market_id",
+        "question",
+        "resolution_criteria",
+        "start_utc",
+        "close_utc"
+      ],
+      "properties": {
+        "market_id": {
+          "type": "string",
+          "description": "Stable Polymarket market identifier."
+        },
+
+        "slug": {
+          "type": ["string", "null"],
+          "description": "Polymarket market/event slug when available."
+        },
+
+        "question": {
+          "type": "string",
+          "description": "Original prediction-market question."
+        },
+
+        "resolution_criteria": {
+          "type": "string",
+          "description": "Original market resolution rules."
+        },
+
+        "start_utc": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Market active/start time."
+        },
+
+        "close_utc": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Market close time used to define forecast horizons."
+        },
+
+        "resolution_utc": {
+          "type": ["string", "null"],
+          "format": "date-time",
+          "description": "Formal Polymarket resolution time, when available."
+        },
+
+        "url": {
+          "type": ["string", "null"],
+          "format": "uri",
+          "description": "Original Polymarket URL."
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "forecast": {
+      "type": "object",
+      "required": [
+        "cutoff_utc",
+        "horizon_days"
+      ],
+      "properties": {
+        "cutoff_utc": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Information cutoff for this forecasting instance."
+        },
+
+        "horizon_days": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Nominal number of days from forecast cutoff to market close."
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "polymarket": {
+      "type": "object",
+      "required": [
+        "yes_probability",
+        "observed_at_utc"
+      ],
+      "properties": {
+        "yes_probability": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Contemporaneous Polymarket YES probability."
+        },
+
+        "observed_at_utc": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp of the Polymarket probability observation actually used."
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "outcome": {
+      "type": "string",
+      "enum": ["YES", "NO"],
+      "description": "Final resolved outcome."
+    },
+
+    "evidence": {
+      "type": "array",
+      "minItems": 1,
+      "description": "All eligible frozen news evidence available for this forecasting instance, ordered by benchmark ranking.",
+      "items": {
+        "type": "object",
+        "required": [
+          "article_id",
+          "rank",
+          "title",
+          "source",
+          "published_at_utc",
+          "url",
+          "text",
+          "evidence_score",
+          "freshness_score",
+          "ranking_score"
+        ],
+        "properties": {
+          "article_id": {
+            "type": "string",
+            "description": "Stable identifier for the article."
+          },
+
+          "rank": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Benchmark-provided evidence ranking for this forecasting instance."
+          },
+
+          "title": {
+            "type": "string",
+            "description": "Article title."
+          },
+
+          "source": {
+            "type": "string",
+            "description": "News source or publisher."
+          },
+
+          "published_at_utc": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Article publication time."
+          },
+
+          "url": {
+            "type": "string",
+            "format": "uri",
+            "description": "Original article URL."
+          },
+
+          "text": {
+            "type": "string",
+            "description": "Frozen evidence text distributed with the benchmark and intended for model input."
+          },
+
+          "evidence_score": {
+            "type": "integer",
+            "minimum": 3,
+            "maximum": 5,
+            "description": "Frozen benchmark evidence-strength score. Only eligible articles are included."
+          },
+
+          "freshness_score": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1,
+            "description": "Frozen temporal freshness score for this article at this forecast cutoff."
+          },
+
+          "ranking_score": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1,
+            "description": "Frozen combined evidence-ranking score."
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+
+  "additionalProperties": false
+}

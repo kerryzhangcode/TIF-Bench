@@ -1,0 +1,28 @@
+.env
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.egg-info/
+dist/
+build/
+.DS_Store
+logs/
+*.log
+
+# Local / non-release trees
+tests/
+
+# Keep only the installable package under src/
+src/*
+!src/tifbench/
+!src/tifbench/**
+src/tifbench/**/__pycache__/
+src/tifbench/**/*.py[cod]
+
+# Keep only the released cohort under data/
+data/*
+!data/benchmark/
+!data/benchmark/**
